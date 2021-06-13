@@ -22,10 +22,10 @@ export default class LoginScreen extends Component {
     return false;
   };
 
-  onSignIn = (googleUser) => {
-    console.log('Google Auth Response', googleUser);
+  
+  onSignIn = googleUser => {
     // We need to register an Observer on Firebase Auth to make sure auth is initialized.
-    var unsubscribe = firebase.auth().onAuthStateChanged((firebaseUser) => {
+    var unsubscribe = firebase.auth().onAuthStateChanged(firebaseUser => {
       unsubscribe();
       // Check if we are already signed-in Firebase with the correct user.
       if (!this.isUserEqual(googleUser, firebaseUser)) {
@@ -35,29 +35,27 @@ export default class LoginScreen extends Component {
           googleUser.accessToken
         );
 
-        console.log('CREDENTIAL', credential);
         // Sign in with credential from the Google user.
-        firebase.auth().signInWithCredential(credential);
-        //.then(function(result) {
-        //    console.log("another result",result.user)
-        //  if (result.additionalUserInfo.isNewUser) {
-        db.ref('/users/' + googleUser.user.id)
-          .set({
-            gmail: googleUser.user.email,
-            profile_picture: googleUser.user.photoUrl,
-
-            first_name: googleUser.user.givenName,
-            last_name: googleUser.user.familyNname,
-            current_theme: 'dark',
+        firebase
+          .auth()
+          .signInWithCredential(credential)
+          .then(function (result) {
+            if (result.additionalUserInfo.isNewUser) {
+              firebase
+                .database()
+                .ref("/users/" + result.user.uid)
+                .set({
+                  gmail: result.user.email,
+                  profile_picture: result.additionalUserInfo.profile.picture,
+                  locale: result.additionalUserInfo.profile.locale,
+                  first_name: result.additionalUserInfo.profile.given_name,
+                  last_name: result.additionalUserInfo.profile.family_name,
+                  current_theme: "dark"
+                })
+                .then(function (snapshot) { });
+            }
           })
-
-          // }
-          // else {
-          // console.log('User already signed-in Firebase.');
-          // }
-
-          // })
-          .catch((error) => {
+          .catch(error => {
             // Handle Errors here.
             var errorCode = error.code;
             var errorMessage = error.message;
@@ -67,6 +65,8 @@ export default class LoginScreen extends Component {
             var credential = error.credential;
             // ...
           });
+      } else {
+        console.log("User already signed-in Firebase.");
       }
     });
   };
@@ -85,7 +85,7 @@ export default class LoginScreen extends Component {
 
       if (result.type === 'success') {
         this.onSignIn(result);
-        this.props.navigation.navigate('DashboardScreen');
+        // this.props.navigation.navigate('DashboardScreen');
         return result.accessToken;
       } else {
         return { cancelled: true };
